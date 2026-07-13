@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>You Guess It — 뉴스 신뢰도</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700;900&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#ffffff;
+    --paper-2:#ffffff;
+    --ink:#1c1a16;
+    --ink-soft:#5b564c;
+    --rule:#ded9c9;
+    --navy:#173a63;
+    --navy-2:#0e2743;
+    --yellow:#f0c231;
+    --actual:#a63a2c;
+    --guess:#3d4b3f;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:#ffffff;
+    color:var(--ink);
+    font-family:'Noto Sans KR',sans-serif;
+    padding:16px;
+  }
+  .wrap{max-width:900px;margin:0 auto;}
+
+  .panel{
+    background:var(--paper);
+    border:1px solid var(--rule);
+    border-radius:6px;
+    padding:22px clamp(12px,3vw,30px) 26px;
+    position:relative;
+  }
+
+  .panel-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom:6px;
+  }
+  .panel-title{
+    font-family:'Noto Serif KR',serif;
+    font-weight:700;
+    font-size:19px;
+    color:var(--ink);
+  }
+  .status{
+    font-size:12.5px;
+    font-weight:700;
+    padding:4px 10px;
+    border-radius:20px;
+    background:var(--navy);
+    color:#fff;
+    white-space:nowrap;
+  }
+  .status.done{background:var(--actual);}
+
+  .sub{
+    font-size:13.5px;
+    color:var(--ink-soft);
+    margin:0 0 34px;
+  }
+
+  /* ---- slider area ---- */
+  .gauge-wrap{
+    padding:10px 6px 4px;
+  }
+  .readout{
+    text-align:center;
+    margin-bottom:22px;
+  }
+  .readout .num{
+    font-family:'Noto Serif KR',serif;
+    font-weight:900;
+    font-size:44px;
+    color:var(--navy);
+    line-height:1;
+    transition:color .2s ease;
+  }
+  .readout .num.locked{color:var(--guess);}
+  .readout .cap{
+    font-size:12px;
+    color:var(--ink-soft);
+    font-weight:700;
+    letter-spacing:0.04em;
+    margin-top:4px;
+  }
+
+  .slider-track-wrap{
+    position:relative;
+    padding:0 4px;
+    margin-bottom:6px;
+  }
+
+  input[type="range"]{
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%;
+    height:10px;
+    border-radius:6px;
+    background:var(--rule);
+    outline:none;
+    margin:0;
+    cursor:pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    background:var(--navy);
+    border:3px solid #fff;
+    box-shadow:0 2px 8px rgba(0,0,0,0.28), 0 0 0 1px var(--rule);
+    cursor:pointer;
+    margin-top:0;
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:22px;
+    height:22px;
+    border-radius:50%;
+    background:var(--navy);
+    border:3px solid #fff;
+    box-shadow:0 2px 8px rgba(0,0,0,0.28), 0 0 0 1px var(--rule);
+    cursor:pointer;
+  }
+  input[type="range"]::-moz-range-track{
+    height:10px;
+    border-radius:6px;
+    background:var(--rule);
+  }
+  input[type="range"]:disabled{cursor:default;}
+  input[type="range"]:disabled::-webkit-slider-thumb{cursor:default;}
+
+  .ticks{
+    display:flex;
+    justify-content:space-between;
+    padding:0 4px;
+    margin-top:10px;
+  }
+  .tick{
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--ink-soft);
+    width:20px;
+    text-align:center;
+  }
+  .end-labels{
+    display:flex;
+    justify-content:space-between;
+    padding:0 0;
+    margin-top:2px;
+  }
+  .end-labels span{
+    font-size:11.5px;
+    color:var(--ink-soft);
+    max-width:120px;
+    line-height:1.4;
+  }
+  .end-labels span.right{text-align:right;}
+
+  .actual-marker{
+    position:absolute;
+    top:-8px;
+    transform:translateX(-50%);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    opacity:0;
+    transition:opacity .5s ease, top .5s ease;
+    pointer-events:none;
+  }
+  .actual-marker.show{opacity:1; top:-34px;}
+  .actual-marker .flag{
+    background:var(--actual);
+    color:#fff;
+    font-size:11px;
+    font-weight:700;
+    padding:2px 8px;
+    border-radius:4px;
+    white-space:nowrap;
+  }
+  .actual-marker .stem{
+    width:2px;
+    height:14px;
+    background:var(--actual);
+  }
+
+  .controls{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    margin-top:28px;
+    flex-wrap:wrap;
+  }
+  button{
+    font-family:'Noto Sans KR',sans-serif;
+    font-size:13.5px;
+    font-weight:700;
+    padding:11px 22px;
+    border-radius:2px;
+    border:1.4px solid var(--ink);
+    background:transparent;
+    color:var(--ink);
+    cursor:pointer;
+    transition:transform .12s ease, background .12s ease, color .12s ease;
+    letter-spacing:0.02em;
+  }
+  button:hover{transform:translateY(-1px);}
+  button.primary{background:var(--navy);border-color:var(--navy);color:#fff;}
+  button.primary:hover{background:var(--navy-2);}
+  button:disabled{opacity:0.35;cursor:not-allowed;transform:none;}
+
+  .reveal{
+    margin-top:26px;
+    padding-top:20px;
+    border-top:1px dashed var(--rule);
+    display:none;
+  }
+  .reveal.show{display:block;}
+  .reveal-headline{
+    font-family:'Noto Serif KR',serif;
+    font-weight:700;
+    font-size:17px;
+    margin-bottom:12px;
+  }
+  .score-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-bottom:16px;
+  }
+  .score-card{
+    background:#faf9f6;
+    border:1px solid var(--rule);
+    padding:12px 10px;
+    text-align:center;
+  }
+  .score-year{font-size:11px;color:var(--ink-soft);font-weight:700;letter-spacing:0.06em;}
+  .score-row{font-size:13px;margin-top:6px;line-height:1.5;}
+  .score-row .g{color:var(--guess);font-weight:700;}
+  .score-row .a{color:var(--actual);font-weight:700;}
+  .score-diff{font-size:11.5px;color:var(--ink-soft);margin-top:4px;}
+
+  .verdict{
+    font-size:14.5px;
+    line-height:1.75;
+    color:var(--ink);
+    background:#faf9f6;
+    border-left:4px solid var(--navy);
+    padding:14px 16px;
+  }
+  .badge{
+    display:inline-block;
+    background:var(--yellow);
+    color:var(--ink);
+    font-size:11px;
+    font-weight:700;
+    padding:2px 8px;
+    border-radius:2px;
+    margin-left:6px;
+    vertical-align:2px;
+  }
+
+  @media (max-width:520px){
+    .score-grid{grid-template-columns:1fr;}
+    .readout .num{font-size:36px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">뉴스 전반적 신뢰도, 몇 점일까요?</div>
+      <div class="status" id="statusBadge">당신의 예측 점수는?</div>
+    </div>
+    <p class="sub">슬라이더를 움직여서 5점 만점 중 몇 점일지 예측해보세요.</p>
+
+    <div class="gauge-wrap">
+      <div class="readout">
+        <div class="num" id="readoutNum">2.5점</div>
+        <div class="cap">내 예측</div>
+      </div>
+
+      <div class="slider-track-wrap">
+        <div class="actual-marker" id="actualMarker">
+          <div class="flag">실제 3.44점</div>
+          <div class="stem"></div>
+        </div>
+        <input type="range" id="scoreSlider" min="0" max="5" step="0.1" value="2.5">
+      </div>
+
+      <div class="ticks">
+        <span class="tick">0</span>
+        <span class="tick">1</span>
+        <span class="tick">2</span>
+        <span class="tick">3</span>
+        <span class="tick">4</span>
+        <span class="tick">5</span>
+      </div>
+      <div class="end-labels">
+        <span>전혀 신뢰하지 않는다</span>
+        <span class="right">매우 신뢰한다</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="resetBtn">↺ 다시 하기</button>
+      <button id="revealBtn" class="primary">정답 확인하기</button>
+    </div>
+
+    <div class="reveal" id="revealBox">
+      <div class="reveal-headline">📰 실제 데이터와 비교해보세요</div>
+      <div class="score-grid" id="scoreGrid"></div>
+      <div class="verdict" id="verdictText"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const ACTUAL = 3.44;
+  const POSITIVE = 49.0;
+  const NEGATIVE = 7.3;
+
+  const slider = document.getElementById('scoreSlider');
+  const readoutNum = document.getElementById('readoutNum');
+  const statusBadge = document.getElementById('statusBadge');
+  const revealBtn = document.getElementById('revealBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const actualMarker = document.getElementById('actualMarker');
+  const revealBox = document.getElementById('revealBox');
+  const scoreGrid = document.getElementById('scoreGrid');
+  const verdictText = document.getElementById('verdictText');
+
+  let revealed = false;
+
+  function pct(val){ return (val / 5) * 100; }
+
+  function paintTrack(){
+    const p = pct(parseFloat(slider.value));
+    slider.style.background = 'linear-gradient(to right, var(--navy) ' + p + '%, var(--rule) ' + p + '%)';
+  }
+
+  function updateReadout(){
+    readoutNum.textContent = parseFloat(slider.value).toFixed(1) + '점';
+    paintTrack();
+  }
+
+  slider.addEventListener('input', function(){
+    if(revealed) return;
+    updateReadout();
+  });
+
+  resetBtn.addEventListener('click', function(){
+    if(revealed){ location.reload(); return; }
+    slider.value = 2.5;
+    updateReadout();
+  });
+
+  revealBtn.addEventListener('click', function(){
+    if(revealed) return;
+    revealed = true;
+    revealBtn.disabled = true;
+    slider.disabled = true;
+    readoutNum.classList.add('locked');
+
+    const guess = parseFloat(slider.value);
+    actualMarker.style.left = pct(ACTUAL) + '%';
+    actualMarker.classList.add('show');
+
+    const diff = Math.abs(guess - ACTUAL);
+    const score = Math.max(0, Math.min(100, Math.round(100 - diff * 20)));
+    statusBadge.textContent = '정확도 ' + score + '점';
+    statusBadge.classList.add('done');
+
+    scoreGrid.innerHTML =
+      '<div class="score-card">' +
+        '<div class="score-year">내 예측 vs 실제</div>' +
+        '<div class="score-row"><span class="g">내 예측 ' + guess.toFixed(1) + '점</span></div>' +
+        '<div class="score-row"><span class="a">실제 ' + ACTUAL.toFixed(2) + '점</span></div>' +
+        '<div class="score-diff">차이 ' + diff.toFixed(2) + '점</div>' +
+      '</div>' +
+      '<div class="score-card">' +
+        '<div class="score-year">긍정 평가</div>' +
+        '<div class="score-row"><span class="a">' + POSITIVE.toFixed(1) + '%</span></div>' +
+        '<div class="score-diff">(신뢰함)</div>' +
+      '</div>' +
+      '<div class="score-card">' +
+        '<div class="score-year">부정 평가</div>' +
+        '<div class="score-row"><span class="a">' + NEGATIVE.toFixed(1) + '%</span></div>' +
+        '<div class="score-diff">(신뢰 안 함)</div>' +
+      '</div>';
+
+    let verdict;
+    if(diff < 0.3){
+      verdict = '차이 <b>' + diff.toFixed(2) + '점</b> — 실제 신뢰도를 정확히 짚어냈어요. 뉴스 신뢰도는 5점 만점에 <b>3.44점</b>으로, 긍정 평가(49.0%)가 부정 평가(7.3%)보다 훨씬 많긴 하지만 "매우 신뢰한다"라고 말할 수준은 아니었습니다.';
+    } else if(diff < 1){
+      verdict = '차이 <b>' + diff.toFixed(2) + '점</b> — 방향은 비슷했지만 실제 수치와는 다소 차이가 있었어요. 뉴스를 신뢰한다는 응답(49.0%)이 신뢰하지 않는다는 응답(7.3%)보다 훨씬 많은데도, 평균 점수는 3.44점에 그쳤습니다. "믿지만 확신하지는 못하는" 애매한 신뢰인 셈이에요.';
+    } else {
+      verdict = '차이 <b>' + diff.toFixed(2) + '점</b> — 실제 수치와 꽤 차이가 났어요. 뉴스를 신뢰한다는 응답이 49.0%로 신뢰하지 않는다는 응답(7.3%)의 6배가 넘지만, 정작 평균 점수는 <b>3.44점</b>에 머물렀습니다.<span class="badge">애매한 신뢰</span> 사람들은 뉴스를 "믿는 편"이지만 "확실히 믿는" 것은 아니라는 뜻이에요.';
+    }
+    verdictText.innerHTML = verdict;
+    revealBox.classList.add('show');
+    revealBox.scrollIntoView({behavior:'smooth', block:'nearest'});
+  });
+
+  updateReadout();
+})();
+</script>
+</body>
+</html>
